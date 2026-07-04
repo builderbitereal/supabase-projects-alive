@@ -103,6 +103,11 @@ SUPABASE_PROJECT_15_REF=your-project-ref-15
 SUPABASE_PROJECT_15_ANON_KEY=your-anon-key-15
 ```
 
+This repository's `.env.example` includes BuilderBite's project names and refs
+as a ready structure, but it intentionally uses placeholder anon keys so the
+public GitHub repo does not publish live credentials. Keep real values only in
+private env files such as `.env.local` on the server.
+
 The app also supports a single JSON variable:
 
 ```bash

@@ -1,110 +1,320 @@
-# Alive Supabase VPS Deployment
+# VPS Deployment Guide
 
-Domain: `alive.builderbite.com`  
-App port: `1209`  
-Suggested app path: `/var/www/alive-supabase`
+This guide deploys the public BuilderBite repository:
 
-## 1. Copy the project to the VPS
+```text
+https://github.com/builderbitereal/supabase-projects-alive
+```
+
+Production target:
+
+```text
+Domain: alive.builderbite.com
+Internal app port: 1209
+App path: /var/www/alive-supabase
+PM2 app name: alive-supabase
+```
+
+The local development port is not `1209`. Port `1209` is reserved for the VPS
+PM2 process behind Nginx.
+
+## 1. Server Requirements
+
+Recommended VPS stack:
+
+- Ubuntu 22.04 or 24.04
+- Node.js 20 LTS or newer
+- npm
+- Git
+- PM2
+- Nginx
+- Certbot for HTTPS
+
+Update the server:
+
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+Install base packages:
+
+```bash
+sudo apt install -y git curl nginx
+```
+
+Install Node.js 20 LTS:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+npm -v
+```
+
+Install PM2 globally:
+
+```bash
+sudo npm install -g pm2
+```
+
+## 2. Clone The GitHub Repo
+
+### Fresh reset if the directory already has old files
+
+Use this when `/var/www/alive-supabase` already exists but is not a clean clone
+of this GitHub repository.
+
+This removes only this app directory and this app's PM2 process:
+
+```bash
+pm2 delete alive-supabase || true
+pm2 save || true
+
+sudo rm -rf /var/www/alive-supabase
+sudo mkdir -p /var/www/alive-supabase
+sudo chown -R "$USER":"$USER" /var/www/alive-supabase
+```
+
+Then continue with the clone command below.
+
+Create the app directory:
 
 ```bash
 sudo mkdir -p /var/www/alive-supabase
 sudo chown -R "$USER":"$USER" /var/www/alive-supabase
-rsync -av --exclude node_modules --exclude .next --exclude .data ./ /var/www/alive-supabase/
+```
+
+Clone the repo into that directory:
+
+```bash
+git clone https://github.com/builderbitereal/supabase-projects-alive.git /var/www/alive-supabase
 cd /var/www/alive-supabase
 ```
 
-## 2. Create `.env.local`
+If the directory already exists from an older deployment:
 
 ```bash
+cd /var/www/alive-supabase
+git pull origin main
+```
+
+## 3. Create Production Env File
+
+Create `.env.local` on the VPS:
+
+```bash
+cd /var/www/alive-supabase
 cp .env.example .env.local
 nano .env.local
 ```
 
-Add each Supabase project:
+Generate a strong cron secret:
 
 ```bash
-CRON_SECRET=replace-with-a-long-random-secret
-
-SUPABASE_PROJECT_1_NAME=Client A
-SUPABASE_PROJECT_1_REF=abcdefghijklmnoabcde
-SUPABASE_PROJECT_1_ANON_KEY=ey...
-
-SUPABASE_PROJECT_2_NAME=Client B
-SUPABASE_PROJECT_2_REF=pqrstuvwxyzabcdxyzpq
-SUPABASE_PROJECT_2_ANON_KEY=ey...
+openssl rand -hex 32
 ```
 
-## 3. Install and build
+Set it in `.env.local`:
 
 ```bash
-npm install
+CRON_SECRET=replace-with-your-generated-secret
+```
+
+Then replace every placeholder anon key with the real Supabase anon key:
+
+```bash
+SUPABASE_PROJECT_1_NAME=Ajkertakarrate
+SUPABASE_PROJECT_1_REF=mdovvjqnjseskgqbifcm
+SUPABASE_PROJECT_1_ANON_KEY=real-anon-key-here
+```
+
+Important:
+
+- Do not commit `.env.local`
+- Do not put real anon keys in `.env.example`
+- The public repo should only contain placeholders
+- The VPS must have the real `.env.local`
+
+## 4. Install And Build
+
+Use `npm ci` for repeatable production installs:
+
+```bash
+cd /var/www/alive-supabase
+npm ci
 npm run build
 ```
 
-## 4. Start with PM2
+Optional validation:
 
 ```bash
-sudo npm install -g pm2
+npm run lint
+```
+
+## 5. Start With PM2 On Port 1209
+
+The PM2 config is already included:
+
+```text
+deployment/ecosystem.config.cjs
+```
+
+Start the app:
+
+```bash
+cd /var/www/alive-supabase
 pm2 start deployment/ecosystem.config.cjs
 pm2 save
+```
+
+Enable PM2 startup after reboot:
+
+```bash
 pm2 startup
 ```
 
-Run the command printed by `pm2 startup`, then:
+PM2 will print a command that starts with `sudo env PATH=...`. Copy and run
+that printed command, then save again:
 
 ```bash
 pm2 save
 ```
 
-## 5. Configure Nginx
+Check status:
 
 ```bash
-sudo cp deployment/nginx-alive.builderbite.com.conf /etc/nginx/sites-available/alive.builderbite.com
+pm2 status
+pm2 logs alive-supabase
+```
+
+Local VPS test:
+
+```bash
+curl -I http://127.0.0.1:1209
+```
+
+## 6. Configure Nginx
+
+Copy the included Nginx config:
+
+```bash
+sudo cp /var/www/alive-supabase/deployment/nginx-alive.builderbite.com.conf /etc/nginx/sites-available/alive.builderbite.com
+```
+
+Enable the site:
+
+```bash
 sudo ln -s /etc/nginx/sites-available/alive.builderbite.com /etc/nginx/sites-enabled/alive.builderbite.com
+```
+
+If another default Nginx site conflicts, remove the default symlink:
+
+```bash
+sudo rm -f /etc/nginx/sites-enabled/default
+```
+
+Test and reload Nginx:
+
+```bash
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Optional HTTPS with Certbot:
+Public HTTP test:
+
+```bash
+curl -I http://alive.builderbite.com
+```
+
+## 7. Enable HTTPS
+
+Install Certbot:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
+```
+
+Issue and install the SSL certificate:
+
+```bash
 sudo certbot --nginx -d alive.builderbite.com
 ```
 
-## 6. Add daily cron
+Test renewal:
 
 ```bash
-crontab -e
+sudo certbot renew --dry-run
 ```
 
-Add this line, replacing the secret:
+Public HTTPS test:
 
 ```bash
-17 4 * * * curl -fsS "https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET" >/dev/null
+curl -I https://alive.builderbite.com
 ```
 
-Quick test:
+## 8. Test Keep-Alive Endpoint
+
+Replace `YOUR_CRON_SECRET` with the value from `/var/www/alive-supabase/.env.local`:
 
 ```bash
 curl -fsS "https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET"
 ```
 
-## 7. Hosted scheduler option
+Expected result:
 
-Instead of VPS cron, any hosted scheduler that can make an HTTP request can call
-the same URL daily.
+- HTTP `200`
+- JSON response with `total`, `ok`, `failed`, and `results`
 
-For cron-job.org or a similar service:
+If you get `401`, the secret is wrong.
+
+If you get `503`, `CRON_SECRET` is missing from `.env.local` or the app was not
+restarted after env changes.
+
+Restart after env edits:
+
+```bash
+pm2 restart alive-supabase
+```
+
+## 9. Schedule Daily Keep-Alive
+
+You can use VPS cron or any hosted URL scheduler.
+
+### Option A: VPS Cron
+
+Open crontab:
+
+```bash
+crontab -e
+```
+
+Add one daily request:
+
+```bash
+17 4 * * * curl -fsS "https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET" >/dev/null
+```
+
+### Option B: cron-job.org
+
+Create a new cron job at:
 
 ```text
+https://cron-job.org/en/
+```
+
+Recommended settings:
+
+```text
+Title: Alive Supabase
 URL: https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET
 Method: GET
 Schedule: once per day
-Expected success: HTTP 200
+Expected status: 200
 ```
 
-If the scheduler supports custom headers, you can keep the secret out of the URL:
+If the scheduler supports request headers, prefer keeping the secret out of the
+URL. Use either:
 
 ```text
 x-cron-secret: YOUR_CRON_SECRET
@@ -115,3 +325,133 @@ or:
 ```text
 Authorization: Bearer YOUR_CRON_SECRET
 ```
+
+Then call:
+
+```text
+https://alive.builderbite.com/api/keep-alive
+```
+
+### Option C: Any URL Scheduler
+
+Any service can be used if it supports daily HTTP requests. Examples:
+
+- cron-job.org
+- EasyCron
+- UptimeRobot heartbeat style checks
+- Better Stack scheduled checks
+- GitHub Actions scheduled workflow
+
+Minimum requirement:
+
+```text
+GET https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET
+```
+
+## 10. Update Deployment Later
+
+When new code is pushed to GitHub:
+
+```bash
+cd /var/www/alive-supabase
+git pull origin main
+npm ci
+npm run build
+pm2 restart alive-supabase
+pm2 save
+```
+
+Check after update:
+
+```bash
+pm2 status
+curl -I https://alive.builderbite.com
+curl -fsS "https://alive.builderbite.com/api/status?secret=YOUR_CRON_SECRET"
+```
+
+## 11. Useful Commands
+
+View logs:
+
+```bash
+pm2 logs alive-supabase
+```
+
+Restart app:
+
+```bash
+pm2 restart alive-supabase
+```
+
+Stop app:
+
+```bash
+pm2 stop alive-supabase
+```
+
+Reload Nginx:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Check port `1209`:
+
+```bash
+sudo ss -ltnp | grep 1209
+```
+
+## 12. Troubleshooting
+
+`502 Bad Gateway`
+
+Check that PM2 is running:
+
+```bash
+pm2 status
+pm2 logs alive-supabase
+```
+
+`401 Unauthorized`
+
+The cron URL secret does not match `CRON_SECRET` in `.env.local`, or PM2 is
+still running the previous environment.
+
+Run this on the VPS:
+
+```bash
+cd /var/www/alive-supabase
+
+grep '^CRON_SECRET=' .env.local
+
+pm2 restart alive-supabase --update-env
+pm2 save
+
+SECRET=$(grep '^CRON_SECRET=' .env.local | cut -d= -f2- | tr -d '\r\n')
+curl -fsS -H "x-cron-secret: $SECRET" "https://alive.builderbite.com/api/keep-alive"
+```
+
+If that works, update the cron-job.org URL or header to use the same secret.
+
+`503 Service Unavailable`
+
+`CRON_SECRET` is missing or empty. Edit `.env.local`, then restart:
+
+```bash
+pm2 restart alive-supabase
+```
+
+Supabase project returns failed status
+
+Check that the project ref and anon key match the same Supabase project.
+
+Nginx config fails
+
+Run:
+
+```bash
+sudo nginx -t
+```
+
+Fix the reported line before reloading Nginx.

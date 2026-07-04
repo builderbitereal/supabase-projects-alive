@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authorizeCronRequest } from "@/lib/auth";
 import { getPublicProjectConfigs } from "@/lib/projects";
 import { readLastRun } from "@/lib/status-store";
 
@@ -8,21 +9,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET?.trim();
 
   if (cronSecret) {
-    const querySecret = request.nextUrl.searchParams.get("secret");
-    const headerSecret = request.headers.get("x-cron-secret");
-    const authHeader = request.headers.get("authorization");
-    const bearerSecret = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
+    const auth = authorizeCronRequest(request);
 
-    if ((querySecret || headerSecret || bearerSecret) !== cronSecret) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Unauthorized.",
-        },
-        { status: 401 },
-      );
+    if (!auth.ok) {
+      return auth.response;
     }
   }
 

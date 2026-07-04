@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authorizeCronRequest } from "@/lib/auth";
 import { runKeepAlive } from "@/lib/keep-alive";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = authorizeRequest(request);
+  const auth = authorizeCronRequest(request);
 
   if (!auth.ok) {
     return auth.response;
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     submittedSecret = String(formData.get("secret") ?? "");
   }
 
-  const auth = authorizeRequest(request, submittedSecret);
+  const auth = authorizeCronRequest(request, submittedSecret);
 
   if (!auth.ok) {
     return auth.response;
@@ -39,53 +40,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(run);
-}
-
-function authorizeRequest(
-  request: NextRequest,
-  submittedSecret?: string | null,
-):
-  | { ok: true }
-  | {
-      ok: false;
-      response: NextResponse;
-    } {
-  const cronSecret = process.env.CRON_SECRET?.trim();
-
-  if (!cronSecret) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: "CRON_SECRET is not configured.",
-        },
-        { status: 503 },
-      ),
-    };
-  }
-
-  const authHeader = request.headers.get("authorization");
-  const bearerSecret = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
-  const headerSecret = request.headers.get("x-cron-secret");
-  const querySecret = request.nextUrl.searchParams.get("secret");
-  const providedSecret =
-    submittedSecret || bearerSecret || headerSecret || querySecret || "";
-
-  if (providedSecret !== cronSecret) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: "Unauthorized.",
-        },
-        { status: 401 },
-      ),
-    };
-  }
-
-  return { ok: true };
 }
