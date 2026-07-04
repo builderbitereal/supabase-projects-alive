@@ -1,52 +1,65 @@
-# Alive Supabase
+# Supabase Projects Alive
 
-**Alive Supabase** is a lightweight Next.js utility from **BuilderBite** for
-keeping multiple Supabase projects warm through a protected scheduled endpoint.
+Keep multiple Supabase projects active with one small Next.js app and one
+scheduled URL.
 
-It is designed for teams that manage many Supabase projects and want one simple
-machine-friendly URL that can be called daily from a VPS cron job, PM2-hosted
-server, or an external scheduler such as cron-job.org.
+This open-source utility from **BuilderBite** is useful when you manage several
+Supabase projects and want a simple daily health ping so inactive projects do
+not sit untouched for long periods.
 
-Production domain used by BuilderBite:
+Deploy it to your own domain, for example:
 
 ```text
-https://alive.builderbite.com
+https://alive.your-domain.com
 ```
 
-## Features
+Then schedule:
 
-- Keep-alive endpoint for multiple Supabase projects
-- Server-only project configuration through environment variables
-- Supports many Supabase accounts/projects with indexed env variables
-- Protected cron endpoint using `CRON_SECRET`
-- Simple dashboard for latest run status
-- Local last-run result storage in `.data/last-run.json`
-- Works with Linux cron, VPS cron, cron-job.org, uptime monitors, and other URL schedulers
-- PM2 and Nginx deployment files included
+```text
+https://alive.your-domain.com/api/keep-alive?secret=YOUR_CRON_SECRET
+```
 
-## How It Works
+## What This App Does
 
-The app reads your configured Supabase project refs from the server environment,
-then calls the default Supabase Auth health endpoint:
+- Stores all Supabase project configuration in server-only env variables
+- Calls each configured Supabase project health endpoint
+- Supports many projects with simple indexed env variables
+- Protects the trigger endpoint with `CRON_SECRET`
+- Shows a clean dashboard with totals and hidden project details
+- Works with VPS cron, cron-job.org, EasyCron, uptime monitors, and similar tools
+- Includes PM2 and Nginx deployment files
+
+## How The Keep-Alive Works
+
+For each configured project, the app calls:
 
 ```text
 https://<project-ref>.supabase.co/auth/v1/health
 ```
 
-The request also sends the configured anon key headers when available. No
-Supabase service role key is required.
+The app sends the project's Supabase anon key in the request headers. A Supabase
+service role key is not required.
 
-The public dashboard never exposes anon keys.
+The dashboard intentionally hides project names, refs, keys, and per-project
+errors for security.
 
 ## Tech Stack
 
 - Next.js App Router
 - React
 - TypeScript
+- Poppins font through `next/font`
 - PM2 for VPS process management
-- Nginx reverse proxy for production deployment
+- Nginx as reverse proxy
 
-## Local Development
+## Quick Start
+
+Clone the repo:
+
+```bash
+git clone https://github.com/builderbitereal/supabase-projects-alive.git
+cd supabase-projects-alive
+```
 
 Install dependencies:
 
@@ -54,13 +67,29 @@ Install dependencies:
 npm install
 ```
 
-Create your local environment file:
+Create your env file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Start the local dev server:
+Generate a secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Edit `.env.local`:
+
+```bash
+CRON_SECRET=replace-with-your-generated-secret
+
+SUPABASE_PROJECT_1_NAME=Main App
+SUPABASE_PROJECT_1_REF=your-project-ref
+SUPABASE_PROJECT_1_ANON_KEY=your-anon-key
+```
+
+Run locally:
 
 ```bash
 npm run dev
@@ -72,12 +101,28 @@ Open:
 http://localhost:3000
 ```
 
-Local development uses port `3000`. The production VPS deployment uses port
-`1209` behind Nginx.
+## Get Supabase Values
+
+For each Supabase project:
+
+1. Open your Supabase dashboard
+2. Select the project
+3. Go to `Project Settings`
+4. Open `API`
+5. Copy the project ref from the project URL or API settings
+6. Copy the `anon public` key
+
+Your project URL looks like:
+
+```text
+https://your-project-ref.supabase.co
+```
+
+The value before `.supabase.co` is the project ref.
 
 ## Environment Variables
 
-Create `.env.local` on the server or locally.
+Use indexed variables for multiple projects:
 
 ```bash
 CRON_SECRET=replace-with-a-long-random-secret
@@ -87,16 +132,16 @@ PING_CONCURRENCY=5
 MAX_INDEXED_PROJECTS=50
 SUPABASE_PING_PATH=/auth/v1/health
 
-SUPABASE_PROJECT_1_NAME=Main workload
+SUPABASE_PROJECT_1_NAME=Main App
 SUPABASE_PROJECT_1_REF=your-project-ref-1
 SUPABASE_PROJECT_1_ANON_KEY=your-anon-key-1
 
-SUPABASE_PROJECT_2_NAME=Second workload
+SUPABASE_PROJECT_2_NAME=Client App
 SUPABASE_PROJECT_2_REF=your-project-ref-2
 SUPABASE_PROJECT_2_ANON_KEY=your-anon-key-2
 ```
 
-You can add as many projects as needed by continuing the indexed pattern:
+Continue the same pattern for more projects:
 
 ```bash
 SUPABASE_PROJECT_15_NAME=Project 15
@@ -104,82 +149,29 @@ SUPABASE_PROJECT_15_REF=your-project-ref-15
 SUPABASE_PROJECT_15_ANON_KEY=your-anon-key-15
 ```
 
-This repository's `.env.example` includes BuilderBite's project names and refs
-as a ready structure, but it intentionally uses placeholder anon keys so the
-public GitHub repo does not publish live credentials. Keep real values only in
-private env files such as `.env.local` on the server.
-
-The app also supports a single JSON variable:
+You can also use one JSON variable:
 
 ```bash
-SUPABASE_PROJECTS_JSON=[{"name":"Main workload","projectRef":"your-project-ref-1","anonKey":"your-anon-key-1"}]
+SUPABASE_PROJECTS_JSON=[{"name":"Main App","projectRef":"your-project-ref-1","anonKey":"your-anon-key-1"}]
 ```
+
+Never commit `.env.local`.
 
 ## API Endpoints
 
-Run keep-alive checks:
+Run the keep-alive check:
 
 ```text
 GET /api/keep-alive?secret=YOUR_CRON_SECRET
 ```
 
-Read current configured projects and last run:
+Read current status:
 
 ```text
 GET /api/status?secret=YOUR_CRON_SECRET
 ```
 
-The keep-alive response returns JSON similar to:
-
-```json
-{
-  "checkedAt": "2026-07-04T00:00:00.000Z",
-  "total": 2,
-  "ok": 2,
-  "failed": 0,
-  "durationMs": 842,
-  "results": []
-}
-```
-
-## Scheduling
-
-You can trigger the keep-alive URL from any scheduler that can make a daily HTTP
-request.
-
-### Option 1: Linux Cron On Your VPS
-
-Open crontab:
-
-```bash
-crontab -e
-```
-
-Add a daily job:
-
-```bash
-17 4 * * * curl -fsS "https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET" >/dev/null
-```
-
-Test it manually:
-
-```bash
-curl -fsS "https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET"
-```
-
-### Option 2: cron-job.org Or Any Hosted Scheduler
-
-Use this when you want a third-party service to call the URL for you.
-
-Recommended setup:
-
-- URL: `https://alive.builderbite.com/api/keep-alive?secret=YOUR_CRON_SECRET`
-- Method: `GET`
-- Schedule: once per day
-- Expected success: HTTP `200`
-
-If your scheduler supports custom headers, you may keep the secret out of the
-URL and send either header instead:
+Header-based auth is supported:
 
 ```text
 x-cron-secret: YOUR_CRON_SECRET
@@ -191,46 +183,149 @@ or:
 Authorization: Bearer YOUR_CRON_SECRET
 ```
 
-For simple URL-only schedulers, the `?secret=` query parameter is supported.
+Example response:
 
-## VPS Deployment
-
-The included deployment setup is prepared for:
-
-```text
-Domain: alive.builderbite.com
-Internal app port: 1209
-Suggested app path: /var/www/alive-supabase
+```json
+{
+  "checkedAt": "2026-07-04T00:00:00.000Z",
+  "total": 3,
+  "ok": 3,
+  "failed": 0,
+  "durationMs": 842,
+  "results": []
+}
 ```
 
-Deployment files:
+## Deploy To A VPS
 
-- `deployment/ecosystem.config.cjs`
-- `deployment/nginx-alive.builderbite.com.conf`
-- `deployment/README.md`
-
-Full VPS instructions are available in:
+Full instructions are in:
 
 ```text
 deployment/README.md
 ```
 
+Default production assumptions:
+
+```text
+Domain: alive.your-domain.com
+Internal app port: 1209
+App path: /var/www/supabase-projects-alive
+PM2 app name: supabase-projects-alive
+```
+
+Important files:
+
+- `deployment/ecosystem.config.cjs`
+- `deployment/nginx-your-domain.conf`
+- `deployment/README.md`
+
+Replace every `alive.your-domain.com` value with your real domain.
+
+## Schedule It
+
+You can run the URL once or twice per day. Daily is usually enough.
+
+### Linux Cron
+
+Open cron:
+
+```bash
+crontab -e
+```
+
+Run once per day at 6:00 AM:
+
+```cron
+0 6 * * * SECRET=$(grep '^CRON_SECRET=' /var/www/supabase-projects-alive/.env.local | cut -d= -f2- | tr -d '\r\n') && curl -fsS -H "x-cron-secret: $SECRET" "https://alive.your-domain.com/api/keep-alive" >/dev/null 2>&1
+```
+
+Run twice per day at 6:00 AM and 6:00 PM:
+
+```cron
+0 6,18 * * * SECRET=$(grep '^CRON_SECRET=' /var/www/supabase-projects-alive/.env.local | cut -d= -f2- | tr -d '\r\n') && curl -fsS -H "x-cron-secret: $SECRET" "https://alive.your-domain.com/api/keep-alive" >/dev/null 2>&1
+```
+
+### cron-job.org
+
+Create a new job at:
+
+```text
+https://cron-job.org/en/
+```
+
+Use:
+
+```text
+URL: https://alive.your-domain.com/api/keep-alive?secret=YOUR_CRON_SECRET
+Method: GET
+Schedule: once per day or twice per day
+Expected status: 200
+```
+
+If your scheduler supports headers, use this cleaner URL:
+
+```text
+https://alive.your-domain.com/api/keep-alive
+```
+
+and add:
+
+```text
+x-cron-secret: YOUR_CRON_SECRET
+```
+
+## Update Later
+
+On your VPS:
+
+```bash
+cd /var/www/supabase-projects-alive
+git pull origin main
+npm ci
+npm run build
+pm2 restart supabase-projects-alive --update-env
+pm2 save
+```
+
+## Troubleshooting
+
+`401 Unauthorized`
+
+Your `CRON_SECRET` does not match. Check `.env.local`, then restart PM2 with:
+
+```bash
+pm2 restart supabase-projects-alive --update-env
+```
+
+`503 Service Unavailable`
+
+`CRON_SECRET` is missing from `.env.local`.
+
+All projects fail
+
+Check that every project ref and anon key match the same Supabase project.
+
+Nginx shows `502 Bad Gateway`
+
+Check PM2:
+
+```bash
+pm2 status
+pm2 logs supabase-projects-alive
+```
+
 ## Security Notes
 
 - Never commit `.env.local`
+- Do not use service role keys
 - Use a long random `CRON_SECRET`
-- Rotate `CRON_SECRET` if it is exposed in scheduler logs or browser history
-- Use Supabase anon keys only; service role keys are not needed
-- Prefer header-based secrets when your scheduler supports custom headers
-- Keep the dashboard unindexed; this project sets `robots: noindex`
+- Prefer header-based scheduler auth when possible
+- Rotate `CRON_SECRET` if it is exposed in logs, screenshots, or browser history
+- Keep the app behind HTTPS in production
 
 ## BuilderBite
 
-Built by **BuilderBite** as a small infrastructure utility for keeping many
-client and internal Supabase workloads easy to monitor and schedule.
+Built by **BuilderBite** for teams and developers managing many Supabase
+projects.
 
-Website:
-
-```text
-https://builderbite.com
-```
+Star the repo if it saves you time.

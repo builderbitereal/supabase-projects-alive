@@ -1,8 +1,8 @@
 module.exports = {
   apps: [
     {
-      name: "alive-supabase",
-      cwd: "/var/www/alive-supabase",
+      name: "supabase-projects-alive",
+      cwd: "/var/www/supabase-projects-alive",
       script: "node_modules/next/dist/bin/next",
       args: "start --hostname 127.0.0.1 --port 1209",
       instances: 1,

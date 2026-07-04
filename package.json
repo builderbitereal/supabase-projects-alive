@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "BuilderBite utility for keeping multiple Supabase projects warm through a protected scheduled endpoint.",
   "private": true,
-  "homepage": "https://alive.builderbite.com",
+  "homepage": "https://github.com/builderbitereal/supabase-projects-alive",
   "author": "BuilderBite",
   "keywords": [
     "builderbite",

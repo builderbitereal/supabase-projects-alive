@@ -127,7 +127,7 @@ export default async function Home() {
 
       <div className="endpoint">
         <ShieldCheck size={20} />
-        <code>https://alive.builderbite.com/api/keep-alive?secret=$CRON_SECRET</code>
+        <code>https://alive.your-domain.com/api/keep-alive?secret=$CRON_SECRET</code>
       </div>
     </main>
   );
