@@ -444,7 +444,29 @@ pm2 restart alive-supabase
 
 Supabase project returns failed status
 
-Check that the project ref and anon key match the same Supabase project.
+After the current health-check update, the default ping path is:
+
+```text
+/auth/v1/health
+```
+
+If every project returns `401`, the server is probably still running older code
+that pinged `/rest/v1/`. Redeploy and restart PM2:
+
+```bash
+cd /var/www/alive-supabase
+git pull origin main
+npm ci
+npm run build
+pm2 restart alive-supabase --update-env
+```
+
+If only one project fails, check that the project ref is correct and that the
+project is reachable at:
+
+```text
+https://<project-ref>.supabase.co/auth/v1/health
+```
 
 Nginx config fails
 

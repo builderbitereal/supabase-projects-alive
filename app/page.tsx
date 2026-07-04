@@ -35,7 +35,7 @@ export default async function Home() {
             <p className="eyebrow">BuilderBite uptime utility</p>
             <h1>Alive Supabase</h1>
             <p className="subtitle">
-              Daily Supabase REST pings for your configured projects, with a
+              Daily Supabase health pings for your configured projects, with a
               compact operator view for the latest run.
             </p>
           </div>

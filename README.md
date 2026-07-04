@@ -26,15 +26,15 @@ https://alive.builderbite.com
 
 ## How It Works
 
-The app reads your configured Supabase project refs and anon keys from the
-server environment, then calls:
+The app reads your configured Supabase project refs from the server environment,
+then calls the default Supabase Auth health endpoint:
 
 ```text
-https://<project-ref>.supabase.co/rest/v1/
+https://<project-ref>.supabase.co/auth/v1/health
 ```
 
-Each request includes the configured anon key as both the `apikey` header and
-Bearer authorization header. No Supabase service role key is required.
+The request also sends the configured anon key headers when available. No
+Supabase service role key is required.
 
 The public dashboard never exposes anon keys.
 
@@ -85,6 +85,7 @@ CRON_SECRET=replace-with-a-long-random-secret
 PING_TIMEOUT_MS=15000
 PING_CONCURRENCY=5
 MAX_INDEXED_PROJECTS=50
+SUPABASE_PING_PATH=/auth/v1/health
 
 SUPABASE_PROJECT_1_NAME=Main workload
 SUPABASE_PROJECT_1_REF=your-project-ref-1

@@ -25,6 +25,7 @@ export type KeepAliveRun = {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_CONCURRENCY = 5;
+const DEFAULT_PING_PATH = "/auth/v1/health";
 
 export async function runKeepAlive(): Promise<KeepAliveRun> {
   const started = Date.now();
@@ -54,7 +55,7 @@ export async function runKeepAlive(): Promise<KeepAliveRun> {
 async function pingProject(
   project: SupabaseProjectConfig,
 ): Promise<KeepAliveResult> {
-  const endpoint = new URL("/rest/v1/", project.projectUrl);
+  const endpoint = new URL(getPingPath(), project.projectUrl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), getTimeoutMs());
   const started = Date.now();
@@ -84,7 +85,7 @@ async function pingProject(
       checkedAt,
       error: response.ok
         ? undefined
-        : `Supabase REST returned HTTP ${response.status}.`,
+        : `Supabase keep-alive endpoint returned HTTP ${response.status}.`,
     };
   } catch (error) {
     const message =
@@ -105,6 +106,12 @@ async function pingProject(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function getPingPath(): string {
+  const path = process.env.SUPABASE_PING_PATH?.trim() || DEFAULT_PING_PATH;
+
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 function getTimeoutMs(): number {
