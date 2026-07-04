@@ -5,6 +5,7 @@ import {
   Clock3,
   RefreshCw,
   Server,
+  Shield,
   ShieldCheck,
 } from "lucide-react";
 import { getPublicProjectConfigs } from "@/lib/projects";
@@ -20,9 +21,7 @@ export default async function Home() {
   const total = projects.length;
   const lastRunTime = lastRun ? formatDate(lastRun.checkedAt) : "Not checked yet";
 
-  const lastResultsById = new Map(
-    lastRun?.results.map((result) => [result.id, result]) ?? [],
-  );
+  const projectSlots = Array.from({ length: total }, (_, index) => index + 1);
 
   return (
     <main className="shell">
@@ -96,38 +95,31 @@ export default async function Home() {
       </div>
 
       <section className="project-grid" aria-label="Configured projects">
-        {projects.map((project) => {
-          const result = lastResultsById.get(project.id);
-          const state = getState(result?.ok);
-
+        {projectSlots.map((slot) => {
           return (
-            <article className="project-card" key={project.id}>
-              <div className="project-head">
-                <div className="project-title">
-                  <h3>{project.name}</h3>
-                  <p className="project-ref">{project.maskedRef}</p>
+            <article className="project-card protected-card" key={slot}>
+              <div className="protected-blur" aria-hidden="true">
+                <div className="protected-head">
+                  <span className="blur-line wide" />
+                  <span className="blur-pill" />
                 </div>
-                <span className={`badge ${state.className}`}>{state.label}</span>
+                <div className="protected-grid">
+                  <span className="blur-box" />
+                  <span className="blur-box" />
+                </div>
+                <span className="blur-line" />
               </div>
 
-              <div className="project-details">
-                <div className="detail">
-                  <span>Status</span>
-                  <strong>
-                    {result
-                      ? result.status
-                        ? `${result.status} ${result.statusText}`
-                        : result.statusText
-                      : "Waiting"}
-                  </strong>
+              <div className="protected-content">
+                <div className="protected-icon" aria-hidden="true">
+                  <Shield size={22} />
                 </div>
-                <div className="detail">
-                  <span>Latency</span>
-                  <strong>{result ? `${result.latencyMs}ms` : "-"}</strong>
-                </div>
+                <h3>Protected project</h3>
+                <p>Details hidden for security</p>
+                <span className="badge secure">
+                  {lastRun ? "Checked" : "Pending"}
+                </span>
               </div>
-
-              {result?.error ? <p className="error-text">{result.error}</p> : null}
             </article>
           );
         })}
@@ -162,27 +154,6 @@ function Metric({
       <p className="metric-note">{note}</p>
     </div>
   );
-}
-
-function getState(ok: boolean | undefined) {
-  if (ok === true) {
-    return {
-      className: "ok",
-      label: "Alive",
-    };
-  }
-
-  if (ok === false) {
-    return {
-      className: "fail",
-      label: "Failed",
-    };
-  }
-
-  return {
-    className: "idle",
-    label: "Pending",
-  };
 }
 
 function formatDate(value: string) {
