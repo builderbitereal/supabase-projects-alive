@@ -1,0 +1,38 @@
+{
+  "name": "alive-supabase",
+  "version": "0.1.0",
+  "description": "BuilderBite utility for keeping multiple Supabase projects warm through a protected scheduled endpoint.",
+  "private": true,
+  "homepage": "https://alive.builderbite.com",
+  "author": "BuilderBite",
+  "keywords": [
+    "builderbite",
+    "supabase",
+    "keep-alive",
+    "nextjs",
+    "cron",
+    "pm2",
+    "nginx"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}
